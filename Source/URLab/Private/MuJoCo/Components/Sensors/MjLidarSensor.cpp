@@ -385,20 +385,22 @@ void UMjLidarSensor::PhysicsPostStep(mjModel* m, mjData* d)
 		m_ScratchGeomId.GetData(), m_ScratchDist.GetData(), nullptr,
 		NumRays, (mjtNum)MaxR);
 
-	// Post-filter: blind zone, range noise.
+	// Post-filter: range noise, then the blind zone. The blind-zone check
+	// runs on the noised return so the published value honours MinRange's
+	// contract ("returns closer than this are discarded").
 	for (int32 i = 0; i < NumRays; ++i)
 	{
 		double& R = m_ScratchDist[i];
 		if (R >= 0.0)
 		{
+			if (RangeNoise > 0.0f)
+			{
+				R = FMath::Max(R + (double)SampleGaussian(m_NoiseStream, RangeNoise), 0.0);
+			}
 			if (R < (double)MinR)
 			{
 				R = -1.0; // inside the blind zone: treat as a miss
 				m_ScratchGeomId[i] = -1;
-			}
-			else if (RangeNoise > 0.0f)
-			{
-				R = FMath::Max(R + (double)SampleGaussian(m_NoiseStream, RangeNoise), 0.0);
 			}
 		}
 		else
@@ -524,7 +526,7 @@ void UMjLidarSensor::ConsumeScan()
 	TArray<FMjLidarTarget> Targets;
 	if (bWantTargets)
 	{
-		BuildTargets(HitPositionsCm, SimTime, Targets);
+		BuildTargets(HitPositionsCm, SimTime, SensorPosUe, Targets);
 	}
 	LastTargets = MoveTemp(Targets);
 
@@ -540,7 +542,7 @@ void UMjLidarSensor::ConsumeScan()
 	OnLidarScan.Broadcast(Scan);
 }
 
-void UMjLidarSensor::BuildTargets(const TArray<FVector>& HitPositionsCm, double SimTime, TArray<FMjLidarTarget>& OutTargets)
+void UMjLidarSensor::BuildTargets(const TArray<FVector>& HitPositionsCm, double SimTime, const FVector& SensorPosUe, TArray<FMjLidarTarget>& OutTargets)
 {
 	OutTargets.Reset();
 
@@ -583,11 +585,9 @@ void UMjLidarSensor::BuildTargets(const TArray<FVector>& HitPositionsCm, double 
 		}
 	}
 
-	// Sensor position for relative positions.
-	const double OriginD[3] = { m_LocalScan.OriginMj[0], m_LocalScan.OriginMj[1], m_LocalScan.OriginMj[2] };
-	const FVector SensorPosUe = MjUtils::MjToUEPosition(OriginD);
-
 	// Match clusters to existing tracks (greedy nearest within the gate).
+	// Relative positions use the caller's SensorPosUe (already computed in
+	// ConsumeScan from the same scan origin).
 	const float GateCm = FMath::Max(ClusterDistanceThreshold * 300.0f, 1.0f);
 	const int32 TrackCount = m_Tracks.Num();
 	TArray<int32> TrackOfCluster;
@@ -814,26 +814,25 @@ void UMjLidarSensor::ClusterPoints(const TArray<FVector>& Points, float Threshol
 	// Spatial hash: cell edge = threshold, so any within-threshold pair must
 	// land in the 3x3x3 neighbourhood.
 	const float Cell = ThresholdCm;
+	auto CellKey = [&Cell](const FVector& P)
+	{
+		return FIntVector(
+			FMath::FloorToInt(P.X / Cell),
+			FMath::FloorToInt(P.Y / Cell),
+			FMath::FloorToInt(P.Z / Cell));
+	};
 	TMap<FIntVector, TArray<int32>> Grid;
 	Grid.Reserve(N);
 	for (int32 i = 0; i < N; ++i)
 	{
-		const FVector& P = Points[i];
-		const FIntVector Key(
-			FMath::FloorToInt(P.X / Cell),
-			FMath::FloorToInt(P.Y / Cell),
-			FMath::FloorToInt(P.Z / Cell));
-		Grid.FindOrAdd(Key).Add(i);
+		Grid.FindOrAdd(CellKey(Points[i])).Add(i);
 	}
 
 	const float ThrSq = ThresholdCm * ThresholdCm;
 	for (int32 i = 0; i < N; ++i)
 	{
 		const FVector& P = Points[i];
-		const FIntVector Key(
-			FMath::FloorToInt(P.X / Cell),
-			FMath::FloorToInt(P.Y / Cell),
-			FMath::FloorToInt(P.Z / Cell));
+		const FIntVector Key = CellKey(P);
 		for (int32 Dx = -1; Dx <= 1; ++Dx)
 		{
 			for (int32 Dy = -1; Dy <= 1; ++Dy)

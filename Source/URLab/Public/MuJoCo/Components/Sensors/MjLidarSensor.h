@@ -119,11 +119,16 @@ public:
 	/**
 	 * Bitmask over MuJoCo geom groups 0..5 (bit g enables group g; bit 0 has
 	 * value 1, bit 5 has value 32). URLab convention: group 3 = collision-only
-	 * geoms, group 2 = visual-only meshes; quick-converted simple primitives
-	 * and MJCF-imported geoms default to group 0. Default: group 3 only (8).
+	 * geoms, group 2 = visual-only meshes; quick-converted simple primitives,
+	 * MjPlane floors and MJCF-imported geoms without a group override default
+	 * to group 0. Default 9 = groups 0 + 3: senses collision hulls plus
+	 * default-group geometry (floor, primitives) while excluding visual-only
+	 * group 2, so a mesh with both visual and collision geoms is never
+	 * double-hit. PIE-verified: the group 0 floor becomes visible exactly
+	 * when bit 0 is set.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MuJoCo|Lidar|Geometry", meta = (ClampMin = "0", ClampMax = "63"))
-	int32 GeomGroupMask = 8;
+	int32 GeomGroupMask = 9;
 
 	/** Include static (worldbody) geoms such as the floor. Leave enabled for environment sensing. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MuJoCo|Lidar|Geometry")
@@ -316,5 +321,5 @@ private:
 	void ConsumeScan();
 
 	/** Clusters current hits into targets, matching against m_Tracks. */
-	void BuildTargets(const TArray<FVector>& HitPositionsCm, double SimTime, TArray<FMjLidarTarget>& OutTargets);
+	void BuildTargets(const TArray<FVector>& HitPositionsCm, double SimTime, const FVector& SensorPosUe, TArray<FMjLidarTarget>& OutTargets);
 };

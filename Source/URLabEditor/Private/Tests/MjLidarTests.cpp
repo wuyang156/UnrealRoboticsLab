@@ -32,7 +32,10 @@
 
 namespace
 {
-	bool NearlyEqualF(FAutomationTestBase& Test, const TCHAR* What, float Actual, float Expected, float Tolerance = 1e-4f)
+	// NOTE: prefixed Lidar* because URLabEditor is a unity build - this file
+	// can share a translation unit with MjLidarVizTests.cpp, whose anonymous-
+	// namespace helpers must not collide with ours.
+	bool LidarNearlyEqualF(FAutomationTestBase& Test, const TCHAR* What, float Actual, float Expected, float Tolerance = 1e-4f)
 	{
 		return Test.TestTrue(FString::Printf(TEXT("%s (%.5f vs %.5f)"), What, Actual, Expected),
 			FMath::IsNearlyEqual(Actual, Expected, Tolerance));
@@ -122,30 +125,30 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMjLidarSphericalDirectionTest,
 bool FMjLidarSphericalDirectionTest::RunTest(const FString& Parameters)
 {
 	const FVector X = UMjLidarSensor::SphericalDirectionMj(0.0f, 0.0f);
-	NearlyEqualF(*this, TEXT("az 0/el 0 -> +X"), X.X, 1.0f);
-	NearlyEqualF(*this, TEXT("az 0/el 0 -> +X"), X.Y, 0.0f);
-	NearlyEqualF(*this, TEXT("az 0/el 0 -> +X"), X.Z, 0.0f);
+	LidarNearlyEqualF(*this, TEXT("az 0/el 0 -> +X"), X.X, 1.0f);
+	LidarNearlyEqualF(*this, TEXT("az 0/el 0 -> +X"), X.Y, 0.0f);
+	LidarNearlyEqualF(*this, TEXT("az 0/el 0 -> +X"), X.Z, 0.0f);
 
 	const FVector Y = UMjLidarSensor::SphericalDirectionMj(90.0f, 0.0f);
-	NearlyEqualF(*this, TEXT("az 90 -> +Y"), Y.X, 0.0f);
-	NearlyEqualF(*this, TEXT("az 90 -> +Y"), Y.Y, 1.0f);
-	NearlyEqualF(*this, TEXT("az 90 -> +Y"), Y.Z, 0.0f);
+	LidarNearlyEqualF(*this, TEXT("az 90 -> +Y"), Y.X, 0.0f);
+	LidarNearlyEqualF(*this, TEXT("az 90 -> +Y"), Y.Y, 1.0f);
+	LidarNearlyEqualF(*this, TEXT("az 90 -> +Y"), Y.Z, 0.0f);
 
 	const FVector Z = UMjLidarSensor::SphericalDirectionMj(0.0f, 90.0f);
-	NearlyEqualF(*this, TEXT("el 90 -> +Z"), Z.X, 0.0f);
-	NearlyEqualF(*this, TEXT("el 90 -> +Z"), Z.Y, 0.0f);
-	NearlyEqualF(*this, TEXT("el 90 -> +Z"), Z.Z, 1.0f);
+	LidarNearlyEqualF(*this, TEXT("el 90 -> +Z"), Z.X, 0.0f);
+	LidarNearlyEqualF(*this, TEXT("el 90 -> +Z"), Z.Y, 0.0f);
+	LidarNearlyEqualF(*this, TEXT("el 90 -> +Z"), Z.Z, 1.0f);
 
 	const FVector Up45 = UMjLidarSensor::SphericalDirectionMj(0.0f, 45.0f);
-	NearlyEqualF(*this, TEXT("el 45 x"), Up45.X, FMath::Sqrt(0.5f));
-	NearlyEqualF(*this, TEXT("el 45 z"), Up45.Z, FMath::Sqrt(0.5f));
+	LidarNearlyEqualF(*this, TEXT("el 45 x"), Up45.X, FMath::Sqrt(0.5f));
+	LidarNearlyEqualF(*this, TEXT("el 45 z"), Up45.Z, FMath::Sqrt(0.5f));
 
 	const FVector Diag = UMjLidarSensor::SphericalDirectionMj(45.0f, 0.0f);
-	NearlyEqualF(*this, TEXT("az 45 x"), Diag.X, FMath::Sqrt(0.5f));
-	NearlyEqualF(*this, TEXT("az 45 y"), Diag.Y, FMath::Sqrt(0.5f));
+	LidarNearlyEqualF(*this, TEXT("az 45 x"), Diag.X, FMath::Sqrt(0.5f));
+	LidarNearlyEqualF(*this, TEXT("az 45 y"), Diag.Y, FMath::Sqrt(0.5f));
 
-	NearlyEqualF(*this, TEXT("unit length"), X.Size(), 1.0f);
-	NearlyEqualF(*this, TEXT("unit length"), Diag.Size(), 1.0f);
+	LidarNearlyEqualF(*this, TEXT("unit length"), X.Size(), 1.0f);
+	LidarNearlyEqualF(*this, TEXT("unit length"), Diag.Size(), 1.0f);
 	return true;
 }
 

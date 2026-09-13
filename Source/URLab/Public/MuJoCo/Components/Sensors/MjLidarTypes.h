@@ -69,11 +69,20 @@ struct FMjLidarPoint
 	UPROPERTY(BlueprintReadWrite, Category = "MuJoCo|Lidar")
 	float ElevationDeg = 0.0f;
 
-	/** Range in metres; negative when the beam missed (or fell inside the blind zone). */
+	/**
+	 * Range in metres. Published scans contain hits only (misses and
+	 * blind-zone returns are omitted by the sensor), so in practice this is
+	 * a valid range >= MinRange; the negative default is a defensive
+	 * sentinel for hand-built points.
+	 */
 	UPROPERTY(BlueprintReadWrite, Category = "MuJoCo|Lidar")
 	float RangeM = -1.0f;
 
-	/** MuJoCo geom id of the hit surface, or -1 on a miss. */
+	/**
+	 * MuJoCo geom id of the hit surface. Published scans contain hits only,
+	 * so this is a valid geom id in practice; -1 remains a defensive sentinel
+	 * for hand-built points (the viz maps it to its miss gray).
+	 */
 	UPROPERTY(BlueprintReadWrite, Category = "MuJoCo|Lidar")
 	int32 HitGeomId = -1;
 
