@@ -65,3 +65,27 @@ For headless or full-framerate capture, stream frames to Python over the bridge.
 
 !!! warning
     Camera capture modes are independent of the key-`6` viewport segmentation overlay in [Debug Visualization](debug.md). The hotkey overlay swaps real materials and therefore appears in any capture; the per-camera modes are the right tool for clean, persistent RGB, depth, or mask streams. Note that the segmentation tints are lit-shaded rather than flat, so they are good for visual debugging but not pixel-exact ground truth.
+
+## Lidar point clouds
+
+A `UMjLidarPointCloudViz` component turns the scan stream of a `UMjLidarSensor` into a visible point cloud for inspecting beam coverage, occlusion, noise, and geom grouping. Add it to the same actor as the sensor (it auto-binds to the owner's first sensor, or set **Source Sensor**). It is event-driven - no Tick - and every property takes effect live in PIE.
+
+!!! note
+    The sensor casts against MuJoCo geoms in the groups enabled by its **Geom Group Mask** (default `9`: group 0 primitives and floors plus group 3 collision hulls; visual-only group 2 is excluded so a mesh with both visual and collision geoms is not double-hit). A plain UE `StaticMeshActor` without any `Mj*` component is invisible to the lidar regardless of the mask.
+
+The **Backend** property chooses the renderer:
+
+| Backend | Best for | Notes |
+|---|---|---|
+| `BatchedDebug` (default) | Quick checks | `DrawDebugPoint` calls, strided to **Batched Max Points** (20,000) so full scans cannot stall the frame rate. |
+| `InstancedStaticMesh` | Full-resolution shape/occlusion checks | One cube instance per point (up to **Max Points**). |
+| `Niagara` | Full-resolution checks with styling | Needs a point system asset with the four `MjLidar.*` user parameters; falls back to BatchedDebug when unset. |
+
+The **Color Mode** property colorizes each point: `SingleColor` (fixed), `ByRange` (red near, blue far - the clearest view of occlusion boundaries), `ByHeight`, `ByElevationRing` (one color per scan ring, revealing the fan pattern), or `ByGeomId` (discrete palette per hit geom, gray for misses).
+
+**History Scans** overlays the last N scans (1 = latest only), which makes drift and noise visible; **Freeze** stops consuming new scans for close inspection. The small axis triplet marks the sensor origin, and aggregated targets get colored spheres at their centroids.
+
+`Export Last Scan to PLY` writes the current cloud (history included) as ASCII PLY to `Saved/URLab/LidarScans/`, with positions in metres, ready for CloudCompare or meshlab.
+
+!!! note
+    The instanced backend colors points through Per-Instance Custom Data, so it needs a material that reads custom data slots 0..2 as RGB. Run `Scripts/create_lidar_viz_material.py` in the editor's Python console once, then assign `M_MjLidarIsmPoint` to **Point Material**. Without it the instances render in the mesh's default gray - shapes and occlusion still check out, colors do not.
