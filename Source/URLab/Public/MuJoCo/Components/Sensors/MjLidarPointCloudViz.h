@@ -187,9 +187,10 @@ public:
 	TObjectPtr<UStaticMesh> PointMesh;
 
 	/**
-	 * Material reading Per-Instance Custom Data slots 0..2 as RGB (generate
-	 * with Scripts/create_lidar_viz_material.py). Unset: the mesh's default
-	 * material renders - shape checks still work, per-point colors do not.
+	 * Material reading Per-Instance Custom Data slots 0..2 as RGB (three
+	 * Per Instance Custom Data expressions appended into RGB, wired to
+	 * Base Color/Emissive). Unset: the mesh's default material renders -
+	 * shape checks still work, per-point colors do not.
 	 */
 	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "MuJoCo|Lidar|Viz|Instanced Mesh")
 	TObjectPtr<UMaterialInterface> PointMaterial;

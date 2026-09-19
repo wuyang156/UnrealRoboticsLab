@@ -88,4 +88,4 @@ The **Color Mode** property colorizes each point: `SingleColor` (fixed), `ByRang
 `Export Last Scan to PLY` writes the current cloud (history included) as ASCII PLY to `Saved/URLab/LidarScans/`, with positions in metres, ready for CloudCompare or meshlab.
 
 !!! note
-    The instanced backend colors points through Per-Instance Custom Data, so it needs a material that reads custom data slots 0..2 as RGB. Run `Scripts/create_lidar_viz_material.py` in the editor's Python console once, then assign `M_MjLidarIsmPoint` to **Point Material**. Without it the instances render in the mesh's default gray - shapes and occlusion still check out, colors do not.
+    The instanced backend colors points through Per-Instance Custom Data, so it needs a material that reads the slots: in the material editor, add three *Per Instance Custom Data* nodes (Custom Data Index 0, 1, 2), append them into an RGB vector wired to Base Color and Emissive, and assign the material to **Point Material**. Without it the instances render in the mesh's default gray - shapes and occlusion still check out, colors do not.
