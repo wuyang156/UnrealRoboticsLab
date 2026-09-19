@@ -24,10 +24,10 @@
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
-#include "MuJoCo/Components/Sensors/MjLidarTypes.h"
+#include "Components/LidarTypes.h"
 #include "MjLidarPointCloudViz.generated.h"
 
-class UMjLidarSensor;
+class ULidarComponent;
 class UStaticMesh;
 class UMaterialInterface;
 class UNiagaraSystem;
@@ -64,8 +64,8 @@ enum class EMjLidarVizColorMode : uint8
 	ByHeight UMETA(DisplayName = "By Height"),
 	/** Elevation ramp over the current scan's elevation min/max: one color per scan ring. */
 	ByElevationRing UMETA(DisplayName = "By Elevation Ring"),
-	/** Discrete palette indexed by hit geom id (gray for misses). */
-	ByGeomId UMETA(DisplayName = "By Hit Geom")
+	/** Discrete palette indexed by hit surface id (gray for misses). */
+	BySurfaceId UMETA(DisplayName = "By Hit Surface")
 };
 
 /**
@@ -86,14 +86,15 @@ struct FMjLidarVizColorContext
 
 /**
  * @class UMjLidarPointCloudViz
- * @brief Debug visualization of the point cloud published by a UMjLidarSensor.
+ * @brief Debug visualization of the point cloud published by a ULidarComponent.
  *
  * A pure UE-side consumer (NOT a UMjComponent: nothing is registered into the
  * MuJoCo spec and mjData is never touched). BeginPlay resolves the sensor
- * (SourceSensor, or the owner's first UMjLidarSensor) and subscribes to
- * OnLidarScan, which broadcasts on the game thread from ConsumeScan. The
- * component is event-driven (no Tick): every scan is appended to a bounded
- * history buffer and re-drawn through the active backend.
+ * (SourceSensor, or the owner's first ULidarComponent — which includes the
+ * UMjLidarSensor adapter) and subscribes to OnLidarScan, which broadcasts on
+ * the game thread after each scan. The component is event-driven (no Tick):
+ * every scan is appended to a bounded history buffer and re-drawn through the
+ * active backend.
  *
  * Backends (lazy-created on the first scan, rebuilt when the Backend property
  * changes mid-PIE): BatchedDebug points (strided), an instanced static mesh
@@ -118,9 +119,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MuJoCo|Lidar|Viz")
 	EMjLidarVizBackend Backend = EMjLidarVizBackend::BatchedDebug;
 
-	/** Sensor to visualize. Empty: the owner's first UMjLidarSensor is used (BeginPlay). */
+	/** Sensor to visualize. Empty: the owner's first ULidarComponent is used (BeginPlay). */
 	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "MuJoCo|Lidar|Viz")
-	TObjectPtr<UMjLidarSensor> SourceSensor;
+	TObjectPtr<ULidarComponent> SourceSensor;
 
 	/** Point colorization mode. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MuJoCo|Lidar|Viz")
@@ -238,13 +239,13 @@ public:
 	static FLinearColor RangeRampColor(float T01);
 
 	/** Fixed 12-color palette indexed by geom id modulo 12; negative ids (misses) map to gray. */
-	static FLinearColor GeomIdColor(int32 GeomId);
+	static FLinearColor SurfaceIdColor(int32 SurfaceId);
 
 	/** Deterministic hash -> hue color for target ids. */
 	static FLinearColor TargetIdColor(int32 TargetId);
 
 	/** Colors one point according to Mode using Ctx's normalization bounds. */
-	static FLinearColor ComputePointColor(EMjLidarVizColorMode Mode, const FMjLidarPoint& Point, const FMjLidarVizColorContext& Ctx);
+	static FLinearColor ComputePointColor(EMjLidarVizColorMode Mode, const FLidarPoint& Point, const FMjLidarVizColorContext& Ctx);
 
 	/** 1 while TotalPoints <= MaxDrawn, otherwise ceil(TotalPoints / MaxDrawn). */
 	static int32 SubsampleStride(int32 TotalPoints, int32 MaxDrawn);
@@ -259,7 +260,7 @@ protected:
 private:
 	/** OnLidarScan handler (broadcast on the game thread; scan passed by value). */
 	UFUNCTION()
-	void HandleLidarScan(FMjLidarScan Scan);
+	void HandleLidarScan(FLidarScan Scan);
 
 	/** One buffered visualization point. */
 	struct FVizPoint
@@ -270,7 +271,7 @@ private:
 	};
 
 	/** Appends Scan's points (colors/sizes applied) to the cloud, then trims history and cap. */
-	void AppendScan(const FMjLidarScan& Scan);
+	void AppendScan(const FLidarScan& Scan);
 
 	/** Creates the backend component on first use; honors the Niagara fallback. */
 	void EnsureBackendCreated();
@@ -279,7 +280,7 @@ private:
 	void DestroyBackend();
 
 	/** Refreshes the backend from m_Cloud, then draws the origin/target overlays. */
-	void RebuildBackend(const FMjLidarScan& Scan);
+	void RebuildBackend(const FLidarScan& Scan);
 
 	/** DrawDebugPoint pass, strided by BatchedMaxPoints. */
 	void RebuildBatchedDebug();
@@ -291,19 +292,19 @@ private:
 	void RebuildNiagara();
 
 	/** Debug-drawn overlays shared by all backends: sensor origin axes and target spheres. */
-	void DrawOverlays(const FMjLidarScan& Scan);
+	void DrawOverlays(const FLidarScan& Scan);
 
 	/** HistoryScans x scan period, clamped to [0.1, 12] s (0.5 s period when unknown). */
 	float ResolveDebugLifetime() const;
 
 	/** Color context for one scan: fixed bounds plus dynamic height/elevation min/max. */
-	FMjLidarVizColorContext BuildColorContext(const TArray<FMjLidarPoint>& Points) const;
+	FMjLidarVizColorContext BuildColorContext(const TArray<FLidarPoint>& Points) const;
 
 	/** Copies m_Cloud into parallel position/color arrays (PLY export and the Niagara push). */
 	void GatherPositionsAndColors(TArray<FVector>& OutPositions, TArray<FLinearColor>& OutColors) const;
 
 	// ---- Bound sensor (weak: the sensor may be destroyed first) ----
-	TWeakObjectPtr<UMjLidarSensor> m_ResolvedSensor;
+	TWeakObjectPtr<ULidarComponent> m_ResolvedSensor;
 
 	// ---- Cloud state (game thread only) ----
 	TArray<FVizPoint> m_Cloud;

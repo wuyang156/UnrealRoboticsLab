@@ -68,10 +68,10 @@ For headless or full-framerate capture, stream frames to Python over the bridge.
 
 ## Lidar point clouds
 
-A `UMjLidarPointCloudViz` component turns the scan stream of a `UMjLidarSensor` into a visible point cloud for inspecting beam coverage, occlusion, noise, and geom grouping. Add it to the same actor as the sensor (it auto-binds to the owner's first sensor, or set **Source Sensor**). It is event-driven - no Tick - and every property takes effect live in PIE.
+The lidar computation is engine-agnostic at its core: a `ULidarComponent` owns the beam grid, noise, blind zone, clustering, and publishing, and works standalone in a plain UE scene by raycasting the Unreal collision world from its own transform. `UMjLidarSensor` is the MuJoCo adapter you use in URLab scenes: it swaps the ray source for the simulation's ground truth — `mj_multiRay` against the compiled MuJoCo model on the physics thread — and reads the sensor pose from the mount body or site, so scans see exactly what MuJoCo sees. Attach it under a body or site of your robot, add a `UMjLidarPointCloudViz` component to the same actor (it auto-binds to the owner's first lidar component, or set **Source Sensor**), and the scans become a visible point cloud for inspecting beam coverage, occlusion, noise, and clustering. The viz is event-driven - no Tick - and every property takes effect live in PIE.
 
 !!! note
-    The sensor casts against MuJoCo geoms in the groups enabled by its **Geom Group Mask** (default `9`: group 0 primitives and floors plus group 3 collision hulls; visual-only group 2 is excluded so a mesh with both visual and collision geoms is not double-hit). A plain UE `StaticMeshActor` without any `Mj*` component is invisible to the lidar regardless of the mask.
+    The MuJoCo sensor casts against MuJoCo geoms in the groups enabled by its **Geom Group Mask** (default `9`: group 0 primitives and floors plus group 3 collision hulls; visual-only group 2 is excluded so a mesh with both visual and collision geoms is not double-hit). A plain UE `StaticMeshActor` without any `Mj*` component is invisible to the lidar regardless of the mask — Quick Convert it first if it should be sensed. A bare `ULidarComponent` (no adapter) instead LineTraces the Unreal world on its **Trace Channel**, for lidar prototyping in scenes with no MuJoCo at all.
 
 The **Backend** property chooses the renderer:
 
@@ -81,7 +81,7 @@ The **Backend** property chooses the renderer:
 | `InstancedStaticMesh` | Full-resolution shape/occlusion checks | One cube instance per point (up to **Max Points**). |
 | `Niagara` | Full-resolution checks with styling | Needs a point system asset with the four `MjLidar.*` user parameters; falls back to BatchedDebug when unset. |
 
-The **Color Mode** property colorizes each point: `SingleColor` (fixed), `ByRange` (red near, blue far - the clearest view of occlusion boundaries), `ByHeight`, `ByElevationRing` (one color per scan ring, revealing the fan pattern), or `ByGeomId` (discrete palette per hit geom, gray for misses).
+The **Color Mode** property colorizes each point: `SingleColor` (fixed), `ByRange` (red near, blue far - the clearest view of occlusion boundaries), `ByHeight`, `ByElevationRing` (one color per scan ring, revealing the fan pattern), or `BySurfaceId` (discrete palette per hit surface, gray for misses).
 
 **History Scans** overlays the last N scans (1 = latest only), which makes drift and noise visible; **Freeze** stops consuming new scans for close inspection. The small axis triplet marks the sensor origin, and aggregated targets get colored spheres at their centroids.
 

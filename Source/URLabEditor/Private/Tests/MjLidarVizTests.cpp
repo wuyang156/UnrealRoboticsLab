@@ -78,9 +78,9 @@ bool FMjLidarVizByRangeTest::RunTest(const FString& Parameters)
 	Ctx.RangeMinM = 0.0f;
 	Ctx.RangeMaxM = 100.0f;
 
-	FMjLidarPoint Near;  Near.RangeM = 0.0f;
-	FMjLidarPoint Mid;   Mid.RangeM = 50.0f;
-	FMjLidarPoint Far;   Far.RangeM = 100.0f;
+	FLidarPoint Near;  Near.RangeM = 0.0f;
+	FLidarPoint Mid;   Mid.RangeM = 50.0f;
+	FLidarPoint Far;   Far.RangeM = 100.0f;
 
 	VizNearlyEqualColor(*this, TEXT("range 0 -> red"),
 		UMjLidarPointCloudViz::ComputePointColor(EMjLidarVizColorMode::ByRange, Near, Ctx), FLinearColor(1.0f, 0.0f, 0.0f));
@@ -94,7 +94,7 @@ bool FMjLidarVizByRangeTest::RunTest(const FString& Parameters)
 	float PrevB = -1.0f;
 	for (int32 i = 0; i <= 20; ++i)
 	{
-		FMjLidarPoint P;
+		FLidarPoint P;
 		P.RangeM = 100.0f * static_cast<float>(i) / 20.0f;
 		const FLinearColor C = UMjLidarPointCloudViz::ComputePointColor(EMjLidarVizColorMode::ByRange, P, Ctx);
 		TestTrue(FString::Printf(TEXT("R non-increasing at %.1f m"), P.RangeM), C.R <= PrevR + 1e-6f);
@@ -104,10 +104,10 @@ bool FMjLidarVizByRangeTest::RunTest(const FString& Parameters)
 	}
 
 	// Out-of-bounds ranges clamp to the endpoints.
-	FMjLidarPoint Beyond; Beyond.RangeM = 250.0f;
+	FLidarPoint Beyond; Beyond.RangeM = 250.0f;
 	VizNearlyEqualColor(*this, TEXT("range 250 clamps blue"),
 		UMjLidarPointCloudViz::ComputePointColor(EMjLidarVizColorMode::ByRange, Beyond, Ctx), FLinearColor(0.0f, 0.0f, 1.0f));
-	FMjLidarPoint Behind; Behind.RangeM = -5.0f;
+	FLidarPoint Behind; Behind.RangeM = -5.0f;
 	VizNearlyEqualColor(*this, TEXT("range -5 clamps red"),
 		UMjLidarPointCloudViz::ComputePointColor(EMjLidarVizColorMode::ByRange, Behind, Ctx), FLinearColor(1.0f, 0.0f, 0.0f));
 	return true;
@@ -127,9 +127,9 @@ bool FMjLidarVizByHeightTest::RunTest(const FString& Parameters)
 	Ctx.HeightMinCm = 0.0f;
 	Ctx.HeightMaxCm = 100.0f;
 
-	FMjLidarPoint Low;  Low.WorldPos = FVector(0.0f, 0.0f, 0.0f);
-	FMjLidarPoint Mid;  Mid.WorldPos = FVector(0.0f, 0.0f, 50.0f);
-	FMjLidarPoint High; High.WorldPos = FVector(0.0f, 0.0f, 100.0f);
+	FLidarPoint Low;  Low.WorldPos = FVector(0.0f, 0.0f, 0.0f);
+	FLidarPoint Mid;  Mid.WorldPos = FVector(0.0f, 0.0f, 50.0f);
+	FLidarPoint High; High.WorldPos = FVector(0.0f, 0.0f, 100.0f);
 
 	VizNearlyEqualColor(*this, TEXT("height 0 -> red"),
 		UMjLidarPointCloudViz::ComputePointColor(EMjLidarVizColorMode::ByHeight, Low, Ctx), FLinearColor(1.0f, 0.0f, 0.0f));
@@ -142,7 +142,7 @@ bool FMjLidarVizByHeightTest::RunTest(const FString& Parameters)
 	FMjLidarVizColorContext Flat;
 	Flat.HeightMinCm = 7.0f;
 	Flat.HeightMaxCm = 7.0f;
-	FMjLidarPoint P;
+	FLidarPoint P;
 	P.WorldPos = FVector(0.0f, 0.0f, 7.0f);
 	VizNearlyEqualColor(*this, TEXT("flat range -> midpoint"),
 		UMjLidarPointCloudViz::ComputePointColor(EMjLidarVizColorMode::ByHeight, P, Flat), FLinearColor(0.5f, 1.0f, 0.0f));
@@ -163,9 +163,9 @@ bool FMjLidarVizByElevationTest::RunTest(const FString& Parameters)
 	Ctx.ElevationMinDeg = -15.0f;
 	Ctx.ElevationMaxDeg = 15.0f;
 
-	FMjLidarPoint Bottom; Bottom.ElevationDeg = -15.0f;
-	FMjLidarPoint Mid;    Mid.ElevationDeg = 0.0f;
-	FMjLidarPoint Top;    Top.ElevationDeg = 15.0f;
+	FLidarPoint Bottom; Bottom.ElevationDeg = -15.0f;
+	FLidarPoint Mid;    Mid.ElevationDeg = 0.0f;
+	FLidarPoint Top;    Top.ElevationDeg = 15.0f;
 
 	VizNearlyEqualColor(*this, TEXT("elevation -15 -> red"),
 		UMjLidarPointCloudViz::ComputePointColor(EMjLidarVizColorMode::ByElevationRing, Bottom, Ctx), FLinearColor(1.0f, 0.0f, 0.0f));
@@ -175,8 +175,8 @@ bool FMjLidarVizByElevationTest::RunTest(const FString& Parameters)
 		UMjLidarPointCloudViz::ComputePointColor(EMjLidarVizColorMode::ByElevationRing, Top, Ctx), FLinearColor(0.0f, 0.0f, 1.0f));
 
 	// Same elevation (same ring) -> same color regardless of azimuth.
-	FMjLidarPoint RingA; RingA.ElevationDeg = 5.0f; RingA.AzimuthDeg = 10.0f;
-	FMjLidarPoint RingB; RingB.ElevationDeg = 5.0f; RingB.AzimuthDeg = 350.0f;
+	FLidarPoint RingA; RingA.ElevationDeg = 5.0f; RingA.AzimuthDeg = 10.0f;
+	FLidarPoint RingB; RingB.ElevationDeg = 5.0f; RingB.AzimuthDeg = 350.0f;
 	const FLinearColor ColorA = UMjLidarPointCloudViz::ComputePointColor(EMjLidarVizColorMode::ByElevationRing, RingA, Ctx);
 	const FLinearColor ColorB = UMjLidarPointCloudViz::ComputePointColor(EMjLidarVizColorMode::ByElevationRing, RingB, Ctx);
 	VizNearlyEqualColor(*this, TEXT("same ring -> same color"), ColorA, ColorB);
@@ -184,34 +184,34 @@ bool FMjLidarVizByElevationTest::RunTest(const FString& Parameters)
 }
 
 // ============================================================================
-// URLab.Lidar.Viz.GeomIdColor_Deterministic
+// URLab.Lidar.Viz.SurfaceIdColor_Deterministic
 //   The palette is stable, 12-periodic, and gray for misses.
 // ============================================================================
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMjLidarVizGeomIdColorTest,
-	"URLab.Lidar.Viz.GeomIdColor_Deterministic",
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMjLidarVizSurfaceIdColorTest,
+	"URLab.Lidar.Viz.SurfaceIdColor_Deterministic",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
 
-bool FMjLidarVizGeomIdColorTest::RunTest(const FString& Parameters)
+bool FMjLidarVizSurfaceIdColorTest::RunTest(const FString& Parameters)
 {
 	// Deterministic across calls, 12-periodic over ids.
 	for (int32 Id = 0; Id < 24; ++Id)
 	{
 		TestTrue(FString::Printf(TEXT("id %d repeats every 12"), Id),
-			UMjLidarPointCloudViz::GeomIdColor(Id) == UMjLidarPointCloudViz::GeomIdColor(Id + 12));
+			UMjLidarPointCloudViz::SurfaceIdColor(Id) == UMjLidarPointCloudViz::SurfaceIdColor(Id + 12));
 	}
 
 	// Misses (negative ids) map to fixed gray.
-	VizNearlyEqualColor(*this, TEXT("miss -1 -> gray"), UMjLidarPointCloudViz::GeomIdColor(-1), FLinearColor::Gray);
-	VizNearlyEqualColor(*this, TEXT("miss -7 -> gray"), UMjLidarPointCloudViz::GeomIdColor(-7), FLinearColor::Gray);
+	VizNearlyEqualColor(*this, TEXT("miss -1 -> gray"), UMjLidarPointCloudViz::SurfaceIdColor(-1), FLinearColor::Gray);
+	VizNearlyEqualColor(*this, TEXT("miss -7 -> gray"), UMjLidarPointCloudViz::SurfaceIdColor(-7), FLinearColor::Gray);
 
 	// Palette entries are distinct from the miss gray and from each other.
 	for (int32 Id = 0; Id < 12; ++Id)
 	{
-		TestTrue(FString::Printf(TEXT("palette %d not gray"), Id), !(UMjLidarPointCloudViz::GeomIdColor(Id) == FLinearColor::Gray));
+		TestTrue(FString::Printf(TEXT("palette %d not gray"), Id), !(UMjLidarPointCloudViz::SurfaceIdColor(Id) == FLinearColor::Gray));
 		for (int32 Other = Id + 1; Other < 12; ++Other)
 		{
 			TestTrue(FString::Printf(TEXT("palette %d != %d"), Id, Other),
-				!(UMjLidarPointCloudViz::GeomIdColor(Id) == UMjLidarPointCloudViz::GeomIdColor(Other)));
+				!(UMjLidarPointCloudViz::SurfaceIdColor(Id) == UMjLidarPointCloudViz::SurfaceIdColor(Other)));
 		}
 	}
 	return true;

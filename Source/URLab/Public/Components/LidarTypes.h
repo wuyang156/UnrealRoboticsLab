@@ -23,18 +23,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "MjLidarTypes.generated.h"
+#include "LidarTypes.generated.h"
 
 /**
- * @enum EMjLidarOutputMode
- * @brief Which outputs a UMjLidarSensor computes and publishes each scan.
+ * @enum ELidarOutputMode
+ * @brief Which outputs a ULidarComponent computes and publishes each scan.
  *
  * - Points: publishes the per-beam hit points only (cheapest).
  * - Targets: clusters hits into aggregated targets only; LastPoints stays empty.
  * - Both: points and targets.
  */
 UENUM(BlueprintType)
-enum class EMjLidarOutputMode : uint8
+enum class ELidarOutputMode : uint8
 {
 	Points UMETA(DisplayName = "Points"),
 	Targets UMETA(DisplayName = "Targets"),
@@ -42,31 +42,30 @@ enum class EMjLidarOutputMode : uint8
 };
 
 /**
- * @struct FMjLidarPoint
+ * @struct FLidarPoint
  * @brief One lidar beam return.
  *
- * WorldPos is in Unreal world coordinates (centimetres), converted from the
- * MuJoCo-space hit computed on the physics thread. Azimuth/Elevation are the
- * beam angles actually used for the cast (post-noise, if noise is enabled),
- * in degrees, following the sensor convention documented on UMjLidarSensor:
- * azimuth sweeps around the sensor's local +Z, elevation is positive above
- * the sensor's local X-XY plane, and 0/0 points along local +X.
+ * WorldPos is in Unreal world coordinates (centimetres). Azimuth/Elevation are
+ * the beam angles actually used for the cast (post-noise, if noise is enabled),
+ * in degrees, following the sensor convention documented on ULidarComponent:
+ * azimuth sweeps around the sensor's local +Z, elevation is positive above the
+ * sensor's local X-XY plane, and 0/0 points along local +X.
  */
 USTRUCT(BlueprintType)
-struct FMjLidarPoint
+struct FLidarPoint
 {
 	GENERATED_BODY()
 
 	/** Hit position in Unreal world coordinates, centimetres. */
-	UPROPERTY(BlueprintReadWrite, Category = "MuJoCo|Lidar")
+	UPROPERTY(BlueprintReadWrite, Category = "Lidar")
 	FVector WorldPos = FVector::ZeroVector;
 
 	/** Beam azimuth in degrees (post-noise). */
-	UPROPERTY(BlueprintReadWrite, Category = "MuJoCo|Lidar")
+	UPROPERTY(BlueprintReadWrite, Category = "Lidar")
 	float AzimuthDeg = 0.0f;
 
 	/** Beam elevation in degrees (post-noise). */
-	UPROPERTY(BlueprintReadWrite, Category = "MuJoCo|Lidar")
+	UPROPERTY(BlueprintReadWrite, Category = "Lidar")
 	float ElevationDeg = 0.0f;
 
 	/**
@@ -75,24 +74,25 @@ struct FMjLidarPoint
 	 * a valid range >= MinRange; the negative default is a defensive
 	 * sentinel for hand-built points.
 	 */
-	UPROPERTY(BlueprintReadWrite, Category = "MuJoCo|Lidar")
+	UPROPERTY(BlueprintReadWrite, Category = "Lidar")
 	float RangeM = -1.0f;
 
 	/**
-	 * MuJoCo geom id of the hit surface. Published scans contain hits only,
-	 * so this is a valid geom id in practice; -1 remains a defensive sentinel
-	 * for hand-built points (the viz maps it to its miss gray).
+	 * Opaque id of the hit surface: a deterministic hash of the hit
+	 * component's name, stable across sessions. Published scans contain hits
+	 * only, so this is a valid id in practice; -1 remains a defensive
+	 * sentinel for hand-built points (the viz maps it to its miss gray).
 	 */
-	UPROPERTY(BlueprintReadWrite, Category = "MuJoCo|Lidar")
-	int32 HitGeomId = -1;
+	UPROPERTY(BlueprintReadWrite, Category = "Lidar")
+	int32 HitSurfaceId = -1;
 
 	/** Id of the scan this point belongs to (monotonic per sensor). */
-	UPROPERTY(BlueprintReadWrite, Category = "MuJoCo|Lidar")
+	UPROPERTY(BlueprintReadWrite, Category = "Lidar")
 	int64 FrameId = -1;
 };
 
 /**
- * @struct FMjLidarTarget
+ * @struct FLidarTarget
  * @brief One aggregated target: a cluster of contemporaneous hit points.
  *
  * RadialSpeed is a kinematic approximation (centroid differencing between
@@ -101,56 +101,60 @@ struct FMjLidarPoint
  * target recedes.
  */
 USTRUCT(BlueprintType)
-struct FMjLidarTarget
+struct FLidarTarget
 {
 	GENERATED_BODY()
 
 	/** Persistent id of the tracked cluster (matches across consecutive scans while matched). */
-	UPROPERTY(BlueprintReadWrite, Category = "MuJoCo|Lidar")
+	UPROPERTY(BlueprintReadWrite, Category = "Lidar")
 	int32 TargetId = -1;
 
 	/** Centroid position relative to the sensor, Unreal coordinates, centimetres. */
-	UPROPERTY(BlueprintReadWrite, Category = "MuJoCo|Lidar")
+	UPROPERTY(BlueprintReadWrite, Category = "Lidar")
 	FVector RelativePos = FVector::ZeroVector;
 
 	/** Kinematic radial speed in m/s: positive when receding from the sensor. */
-	UPROPERTY(BlueprintReadWrite, Category = "MuJoCo|Lidar")
+	UPROPERTY(BlueprintReadWrite, Category = "Lidar")
 	float RadialSpeed = 0.0f;
 
 	/** Number of hit points in the cluster. */
-	UPROPERTY(BlueprintReadWrite, Category = "MuJoCo|Lidar")
+	UPROPERTY(BlueprintReadWrite, Category = "Lidar")
 	int32 NumPoints = 0;
 
 	/** Cluster centroid in Unreal world coordinates, centimetres. */
-	UPROPERTY(BlueprintReadWrite, Category = "MuJoCo|Lidar")
+	UPROPERTY(BlueprintReadWrite, Category = "Lidar")
 	FVector CentroidWorldPos = FVector::ZeroVector;
 };
 
 /**
- * @struct FMjLidarScan
+ * @struct FLidarScan
  * @brief A complete scan result: points and/or targets plus scan metadata.
  */
 USTRUCT(BlueprintType)
-struct FMjLidarScan
+struct FLidarScan
 {
 	GENERATED_BODY()
 
 	/** Hit points (empty in Targets output mode). */
-	UPROPERTY(BlueprintReadWrite, Category = "MuJoCo|Lidar")
-	TArray<FMjLidarPoint> Points;
+	UPROPERTY(BlueprintReadWrite, Category = "Lidar")
+	TArray<FLidarPoint> Points;
 
 	/** Aggregated targets (empty in Points output mode). */
-	UPROPERTY(BlueprintReadWrite, Category = "MuJoCo|Lidar")
-	TArray<FMjLidarTarget> Targets;
+	UPROPERTY(BlueprintReadWrite, Category = "Lidar")
+	TArray<FLidarTarget> Targets;
 
 	/** Monotonic scan id. */
-	UPROPERTY(BlueprintReadWrite, Category = "MuJoCo|Lidar")
+	UPROPERTY(BlueprintReadWrite, Category = "Lidar")
 	int64 ScanId = -1;
 
-	/** MuJoCo simulation time (d->time) at which the scan was taken, seconds. */
-	UPROPERTY(BlueprintReadWrite, Category = "MuJoCo|Lidar")
+	/**
+	 * Scan-clock seconds at which the scan was taken. A bare ULidarComponent
+	 * scans on world time; UMjLidarSensor repurposes this as MuJoCo
+	 * simulation time so scan scheduling honours sim speed and pauses.
+	 */
+	UPROPERTY(BlueprintReadWrite, Category = "Lidar")
 	double SimTime = 0.0;
 };
 
-/** Broadcast on the game thread after each completed scan is consumed. */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnLidarScan, FMjLidarScan, Scan);
+/** Broadcast on the game thread after each completed scan. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnLidarScan, FLidarScan, Scan);

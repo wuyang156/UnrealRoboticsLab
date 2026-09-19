@@ -22,7 +22,7 @@
 
 #include "MuJoCo/Components/Sensors/MjLidarPointCloudViz.h"
 
-#include "MuJoCo/Components/Sensors/MjLidarSensor.h"
+#include "Components/LidarComponent.h"
 #include "Utils/URLabLogging.h"
 
 #include "Components/InstancedStaticMeshComponent.h"
@@ -125,15 +125,15 @@ void UMjLidarPointCloudViz::BeginPlay()
 {
 	Super::BeginPlay();
 
-	UMjLidarSensor* Sensor = SourceSensor;
+	ULidarComponent* Sensor = SourceSensor;
 	if (!Sensor && GetOwner())
 	{
-		Sensor = GetOwner()->FindComponentByClass<UMjLidarSensor>();
+		Sensor = GetOwner()->FindComponentByClass<ULidarComponent>();
 	}
 	if (!Sensor)
 	{
 		UE_LOG(LogURLab, Warning,
-			TEXT("MjLidarPointCloudViz on '%s': no UMjLidarSensor found (SourceSensor unset and the owner has none); the visualization stays idle."),
+			TEXT("MjLidarPointCloudViz on '%s': no ULidarComponent found (SourceSensor unset and the owner has none); the visualization stays idle."),
 			*GetNameSafe(GetOwner()));
 		return;
 	}
@@ -149,7 +149,7 @@ void UMjLidarPointCloudViz::BeginPlay()
 
 void UMjLidarPointCloudViz::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	if (UMjLidarSensor* Sensor = m_ResolvedSensor.Get())
+	if (ULidarComponent* Sensor = m_ResolvedSensor.Get())
 	{
 		Sensor->OnLidarScan.RemoveDynamic(this, &UMjLidarPointCloudViz::HandleLidarScan);
 	}
@@ -162,7 +162,7 @@ void UMjLidarPointCloudViz::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Super::EndPlay(EndPlayReason);
 }
 
-void UMjLidarPointCloudViz::HandleLidarScan(FMjLidarScan Scan)
+void UMjLidarPointCloudViz::HandleLidarScan(FLidarScan Scan)
 {
 	if (bFreeze)
 	{
@@ -178,7 +178,7 @@ void UMjLidarPointCloudViz::HandleLidarScan(FMjLidarScan Scan)
 	RebuildBackend(Scan);
 }
 
-void UMjLidarPointCloudViz::AppendScan(const FMjLidarScan& Scan)
+void UMjLidarPointCloudViz::AppendScan(const FLidarScan& Scan)
 {
 	if (Scan.ScanId >= 0 && Scan.ScanId == m_LastScanId)
 	{
@@ -192,7 +192,7 @@ void UMjLidarPointCloudViz::AppendScan(const FMjLidarScan& Scan)
 
 	const int32 NewCount = Scan.Points.Num();
 	m_Cloud.Reserve(m_Cloud.Num() + NewCount);
-	for (const FMjLidarPoint& Point : Scan.Points)
+	for (const FLidarPoint& Point : Scan.Points)
 	{
 		FVizPoint& VizPoint = m_Cloud.AddDefaulted_GetRef();
 		VizPoint.Pos = Point.WorldPos;
@@ -228,7 +228,7 @@ void UMjLidarPointCloudViz::AppendScan(const FMjLidarScan& Scan)
 	}
 }
 
-FMjLidarVizColorContext UMjLidarPointCloudViz::BuildColorContext(const TArray<FMjLidarPoint>& Points) const
+FMjLidarVizColorContext UMjLidarPointCloudViz::BuildColorContext(const TArray<FLidarPoint>& Points) const
 {
 	FMjLidarVizColorContext Ctx;
 	Ctx.SingleColor = PointColor;
@@ -241,7 +241,7 @@ FMjLidarVizColorContext UMjLidarPointCloudViz::BuildColorContext(const TArray<FM
 		float MaxZ = MinZ;
 		float MinEl = Points[0].ElevationDeg;
 		float MaxEl = MinEl;
-		for (const FMjLidarPoint& Point : Points)
+		for (const FLidarPoint& Point : Points)
 		{
 			MinZ = FMath::Min(MinZ, Point.WorldPos.Z);
 			MaxZ = FMath::Max(MaxZ, Point.WorldPos.Z);
@@ -293,9 +293,9 @@ FLinearColor UMjLidarPointCloudViz::RangeRampColor(float T01)
 	return FMath::Lerp(Stops[Index], Stops[Index + 1], Frac);
 }
 
-FLinearColor UMjLidarPointCloudViz::GeomIdColor(int32 GeomId)
+FLinearColor UMjLidarPointCloudViz::SurfaceIdColor(int32 SurfaceId)
 {
-	if (GeomId < 0)
+	if (SurfaceId < 0)
 	{
 		return FLinearColor::Gray; // miss / blind zone
 	}
@@ -315,7 +315,7 @@ FLinearColor UMjLidarPointCloudViz::GeomIdColor(int32 GeomId)
 		FLinearColor(0.5f, 1.0f, 0.0f),
 		FLinearColor(0.55f, 0.35f, 0.15f)
 	};
-	return Palette[GeomId % 12];
+	return Palette[SurfaceId % 12];
 }
 
 FLinearColor UMjLidarPointCloudViz::TargetIdColor(int32 TargetId)
@@ -325,7 +325,7 @@ FLinearColor UMjLidarPointCloudViz::TargetIdColor(int32 TargetId)
 	return HslToLinear(Hue, 0.85f, 0.5f);
 }
 
-FLinearColor UMjLidarPointCloudViz::ComputePointColor(EMjLidarVizColorMode Mode, const FMjLidarPoint& Point, const FMjLidarVizColorContext& Ctx)
+FLinearColor UMjLidarPointCloudViz::ComputePointColor(EMjLidarVizColorMode Mode, const FLidarPoint& Point, const FMjLidarVizColorContext& Ctx)
 {
 	switch (Mode)
 	{
@@ -337,9 +337,9 @@ FLinearColor UMjLidarPointCloudViz::ComputePointColor(EMjLidarVizColorMode Mode,
 		return RangeRampColor(Normalize01(Point.WorldPos.Z, Ctx.HeightMinCm, Ctx.HeightMaxCm));
 	case EMjLidarVizColorMode::ByElevationRing:
 		return RangeRampColor(Normalize01(Point.ElevationDeg, Ctx.ElevationMinDeg, Ctx.ElevationMaxDeg));
-	case EMjLidarVizColorMode::ByGeomId:
+	case EMjLidarVizColorMode::BySurfaceId:
 	default:
-		return GeomIdColor(Point.HitGeomId);
+		return SurfaceIdColor(Point.HitSurfaceId);
 	}
 }
 
@@ -537,7 +537,7 @@ void UMjLidarPointCloudViz::DestroyBackend()
 	m_bBackendCreated = false;
 }
 
-void UMjLidarPointCloudViz::RebuildBackend(const FMjLidarScan& Scan)
+void UMjLidarPointCloudViz::RebuildBackend(const FLidarScan& Scan)
 {
 	EnsureBackendCreated();
 	if (!m_bBackendCreated)
@@ -633,7 +633,7 @@ void UMjLidarPointCloudViz::RebuildNiagara()
 // Overlays
 // ---------------------------------------------------------------------------
 
-void UMjLidarPointCloudViz::DrawOverlays(const FMjLidarScan& Scan)
+void UMjLidarPointCloudViz::DrawOverlays(const FLidarScan& Scan)
 {
 	UWorld* World = GetWorld();
 	if (!World || (!bShowSensorOrigin && !bDrawTargetCentroids))
@@ -645,8 +645,8 @@ void UMjLidarPointCloudViz::DrawOverlays(const FMjLidarScan& Scan)
 
 	if (bShowSensorOrigin && m_ResolvedSensor.IsValid())
 	{
-		// FMjLidarScan carries no sensor origin; read it from the sensor component.
-		const UMjLidarSensor* Sensor = m_ResolvedSensor.Get();
+		// FLidarScan carries no sensor origin; read it from the sensor component.
+		const ULidarComponent* Sensor = m_ResolvedSensor.Get();
 		const FVector Origin = Sensor->GetComponentLocation();
 		const float Axis = 30.0f;
 		DrawDebugLine(World, Origin, Origin + FVector(Axis, 0.0f, 0.0f), FColor::Red, false, Lifetime, 0, 0.3f);
@@ -656,7 +656,7 @@ void UMjLidarPointCloudViz::DrawOverlays(const FMjLidarScan& Scan)
 
 	if (bDrawTargetCentroids)
 	{
-		for (const FMjLidarTarget& Target : Scan.Targets)
+		for (const FLidarTarget& Target : Scan.Targets)
 		{
 			DrawDebugSphere(World, Target.CentroidWorldPos, TargetSphereRadiusCm, 10,
 				TargetIdColor(Target.TargetId).ToFColor(/*sRGB*/ false), false, Lifetime, 0, 0.5f);
@@ -668,7 +668,7 @@ float UMjLidarPointCloudViz::ResolveDebugLifetime() const
 {
 	// One scan period by default; unknown/unset rates fall back to 0.5 s.
 	float Period = 0.5f;
-	if (const UMjLidarSensor* Sensor = m_ResolvedSensor.Get())
+	if (const ULidarComponent* Sensor = m_ResolvedSensor.Get())
 	{
 		if (Sensor->ScanFrequencyHz > 0.0f)
 		{
